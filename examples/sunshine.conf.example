@@ -1,0 +1,6 @@
+# ~/.config/sunshine/sunshine.conf
+# Capture the dummy-plug output instead of whichever display Sunshine would pick.
+output_name = DP-4
+
+# Optional: verbose logs while debugging geometry/capture issues.
+# min_log_level = debug

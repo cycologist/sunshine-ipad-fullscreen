@@ -1,0 +1,3 @@
+edid/custom.bin
+*.bak
+__pycache__/

@@ -1,0 +1,17 @@
+{
+    "apps": [
+        {
+            "name": "Desktop",
+            "image-path": "desktop.png",
+            "prep-cmd": [
+                {
+                    "do": "kscreen-doctor output.DP-4.mode.1920x1334@60",
+                    "undo": ""
+                }
+            ]
+        }
+    ],
+    "env": {
+        "PATH": "$(PATH):$(HOME)/.local/bin"
+    }
+}
