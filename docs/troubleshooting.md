@@ -67,6 +67,20 @@ kscreen-doctor output.DP-4.enable
 kscreen-doctor output.DP-4.mode.1920x1334@60
 ```
 
+## `dp4-edid.service` is failed with `start-limit-hit`
+
+The udev rule and the applier can feed each other: the applier pokes
+`trigger_hotplug`, which is a DRM *change* event, which restarts the unit, which pokes
+again. Fixes present in the current version, worth checking if you hand-edited anything:
+
+* udev rule matches only `ACTION=="add"` (card creation / re-enumeration), not `"change"`,
+* the applier writes **one** connector path and exits - DRM exposes the same connector twice
+  (`dri/1/DP-4` and `dri/0000:c1:00.0/DP-4`), writing both doubles the hotplug poke,
+* `flock` serialises overlapping runs,
+* the unit sets `StartLimitIntervalSec=0`.
+
+Recovery: `sudo systemctl reset-failed dp4-edid && sudo systemctl start dp4-edid`.
+
 ## The connector gets renamed (DP-4 → DP-1 …)
 
 Connector numbering depends on probe order. If the dummy plug moves, the override, the

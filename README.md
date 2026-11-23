@@ -67,7 +67,7 @@ always `kscreen-doctor` back to something safe.
 | `/usr/local/share/dp4/<blob>.bin` | the EDID blob |
 | `/usr/local/bin/dp4-edid-apply.sh` | idempotent: writes the blob to `/sys/kernel/debug/dri/*/<CONN>/edid_override`, then pokes `trigger_hotplug` |
 | `/etc/systemd/system/dp4-edid.service` | oneshot, `WantedBy=graphical.target`, `After=sys-kernel-debug.mount` → applied at every boot |
-| `/etc/udev/rules.d/90-dp4-edid.rules` | re-applies on DRM hotplug, so a flaky USB-C/HDMI expansion card that resets doesn't lose the modes |
+| `/etc/udev/rules.d/90-dp4-edid.rules` | re-applies when the DRM card is (re-)created, so a flaky USB-C/HDMI expansion card that re-enumerates doesn't lose the modes |
 
 Verify:
 

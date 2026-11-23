@@ -42,19 +42,24 @@ cat > /usr/local/bin/dp4-edid-apply.sh <<'EOS'
 # Safe to run at any time: does nothing when the override is already in place.
 . /etc/dp4-edid.conf
 [ -r "$BLOB" ] || exit 0
+
+# Serialize: boot, udev and manual runs can overlap.
+exec 9>/run/dp4-edid.lock
+flock -w 10 9 || exit 0
+
+# DRM exposes every connector twice, e.g. /sys/kernel/debug/dri/1/DP-4 and
+# /sys/kernel/debug/dri/0000:c1:00.0/DP-4 - same connector, so write exactly once
+# and stop. (Writing both used to double-poke trigger_hotplug.)
 for _ in $(seq 1 20); do
-    found=0
     for d in /sys/kernel/debug/dri/*/"$CONNECTOR"; do
         [ -d "$d" ] || continue
-        found=1
         [ -w "$d/edid_override" ] || continue
-        if ! cmp -s "$d/edid_override" "$BLOB" 2>/dev/null; then
-            cat "$BLOB" > "$d/edid_override" || continue
-            echo 1 > "$d/trigger_hotplug" 2>/dev/null || true
-            logger -t dp4-edid "applied $(basename "$BLOB") to $d"
-        fi
+        cmp -s "$d/edid_override" "$BLOB" 2>/dev/null && exit 0   # already applied
+        cat "$BLOB" > "$d/edid_override" || exit 0
+        echo 1 > "$d/trigger_hotplug" 2>/dev/null || true
+        logger -t dp4-edid "applied $(basename "$BLOB") to $d"
+        exit 0
     done
-    [ "$found" = 1 ] && exit 0
     sleep 1
 done
 logger -t dp4-edid "connector $CONNECTOR not found; nothing applied"
@@ -67,6 +72,9 @@ cat > /etc/systemd/system/dp4-edid.service <<EOS
 Description=Custom EDID for $CONN (dp4-edid)
 After=sys-kernel-debug.mount systemd-udevd.service
 Wants=sys-kernel-debug.mount
+# The applier pokes trigger_hotplug, which is a DRM hotplug event; never let that
+# turn into a start-rate-limit failure.
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
@@ -77,19 +85,29 @@ WantedBy=graphical.target
 EOS
 
 cat > /etc/udev/rules.d/90-dp4-edid.rules <<EOS
-# Re-apply the $CONN EDID override whenever the connector is (re-)detected.
-ACTION=="add|change", SUBSYSTEM=="drm", KERNEL=="card*", ENV{HOTPLUG}=="1", TAG+="systemd", ENV{SYSTEMD_WANTS}+="dp4-edid.service"
+# Re-apply the $CONN EDID override when the DRM card is (re-)created, i.e. after boot
+# or after a USB-C/HDMI card reset re-enumerates. Deliberately NOT ACTION=="change":
+# the applier's own trigger_hotplug emits a change event, which would restart this
+# unit from inside itself and end in a systemd start-limit-hit loop.
+ACTION=="add", SUBSYSTEM=="drm", KERNEL=="card*", TAG+="systemd", ENV{SYSTEMD_WANTS}+="dp4-edid.service"
 EOS
 
+# drop artifacts of older versions of this installer
+rm -rf /usr/local/share/dp4
+
 systemctl daemon-reload
+systemctl reset-failed dp4-edid.service 2>/dev/null || true
 systemctl enable dp4-edid.service >/dev/null
-systemctl start dp4-edid.service || true
+systemctl restart dp4-edid.service || true
 udevadm control --reload-rules
-udevadm trigger --subsystem-match=drm
-sleep 1
+udevadm trigger --subsystem-match=drm --action=add
+sleep 2
 
 echo "== dp4-edid.service =="
 systemctl status --no-pager --lines=2 dp4-edid.service | sed 's/^/   /' || true
+if systemctl is-failed --quiet dp4-edid.service; then
+    echo "   WARNING: unit failed - journalctl -u dp4-edid.service"
+fi
 echo
 echo "== EDID now served for $CONN =="
 for f in /sys/class/drm/card*-"$CONN"/edid; do
