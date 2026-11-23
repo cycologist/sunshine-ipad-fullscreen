@@ -42,7 +42,7 @@ cd sunshine-ipad-fullscreen
 sudo ./install.sh edid/custom.bin DP-4
 
 # 3. switch the output to the new mode, unscaled, at the origin
-kscreen-doctor output.DP-4.scale.1 output.DP-4.position.0,0 output.DP-4.mode.1920x1334@60
+kscreen-doctor output.DP-4.scale.1 output.DP-4.position.0,0 output.DP-4.primary output.DP-4.mode.1920x1334@60
 ```
 
 Reconnect Moonlight: the iPad is filled, no bars.
@@ -127,6 +127,9 @@ examples/              sunshine.conf / apps.json snippets
   1.25). The logical size then no longer equals the mode size (1920x1334 → 1536x1067), and
   Sunshine's absolute touch/mouse mapping lands on the wrong screen because it works in
   desktop coordinates. Fix: `kscreen-doctor output.DP-4.scale.1 output.DP-4.position.0,0`.
+* **Absolute input is mapped to the primary output.** If the laptop panel is primary, iPad
+  touches land there; make the streamed output primary (`kscreen-doctor output.DP-4.primary`)
+  or map `libvirtualhid` devices to it in System Settings -> Input Devices.
 * If the panel aspect and your chosen mode are subtly off, you get thin bars on two sides —
   that's a rounding issue, adjust the width (multiple of 8) until
   `width/height` matches `panel_width/panel_height`.

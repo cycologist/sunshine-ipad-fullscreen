@@ -72,6 +72,13 @@ Two independent traps on KDE Wayland, both visible in `sunshine.log`:
    `kscreen-doctor output.DP-4.position.0,0`. With DP-4 at `0,0` and scale 1, touch maps
    pixel-perfect.
 
+3. **Primary output.** KWin maps absolute pointer/touch devices onto the *primary*
+   output. If the laptop panel is primary, every touch from Moonlight lands there (no
+   cursor in the stream, clicks hitting the wrong screen). Make the streamed output
+   primary: `kscreen-doctor output.DP-4.primary`. If you must keep the panel primary,
+   instead map the device in System Settings -> Input Devices -> Touchscreen/Tablet
+   (`libvirtualhid Touchscreen` / `libvirtualhid Pen Tablet`) to the streamed output.
+
 Also verify Sunshine can actually inject: the `libvirtualhid*` devices must be readable by
 the compositor's user (`event*` nodes are `root:input 0660` with no ACL by default — the
 compositor opens seat devices through logind and cannot do that for uinput devices):
