@@ -5,7 +5,7 @@
             "image-path": "desktop.png",
             "prep-cmd": [
                 {
-                    "do": "kscreen-doctor output.DP-4.mode.1920x1334@60",
+                    "do": "kscreen-doctor output.DP-4.scale.1 output.DP-4.position.0,0 output.DP-4.mode.1920x1334@60",
                     "undo": ""
                 }
             ]

@@ -41,8 +41,8 @@ cd sunshine-ipad-fullscreen
 # 2. install it for a connector (default DP-4) - one root command
 sudo ./install.sh edid/custom.bin DP-4
 
-# 3. switch the output to the new mode
-kscreen-doctor output.DP-4.mode.1920x1334@60
+# 3. switch the output to the new mode, unscaled, at the origin
+kscreen-doctor output.DP-4.scale.1 output.DP-4.position.0,0 output.DP-4.mode.1920x1334@60
 ```
 
 Reconnect Moonlight: the iPad is filled, no bars.
@@ -122,6 +122,11 @@ examples/              sunshine.conf / apps.json snippets
 * The override is *volatile* (debugfs) — that's why there's a service + udev rule.
   `install.sh` makes it survive reboots and connector re-detection.
 * Bitrate: 1920x1334 at Sunshine's default 7 Mbps is soft; 20–30 Mbps looks much better.
+* **Scale must be 1 and the streamed output should sit at `0,0`.** A new EDID identity makes
+  KWin treat the output as a brand-new monitor, and it may give it a fractional scale (seen:
+  1.25). The logical size then no longer equals the mode size (1920x1334 → 1536x1067), and
+  Sunshine's absolute touch/mouse mapping lands on the wrong screen because it works in
+  desktop coordinates. Fix: `kscreen-doctor output.DP-4.scale.1 output.DP-4.position.0,0`.
 * If the panel aspect and your chosen mode are subtly off, you get thin bars on two sides —
   that's a rounding issue, adjust the width (multiple of 8) until
   `width/height` matches `panel_width/panel_height`.

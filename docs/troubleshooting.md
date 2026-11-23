@@ -58,6 +58,33 @@ Environment=KWIN_DRM_PREFER_COLOR_DEPTH=8
 
 `0x200000010401b04` (plain DCC) and `0x0` (linear) import fine.
 
+## Touch/mouse moves the pointer on the wrong screen (or not at all)
+
+Two independent traps on KDE Wayland, both visible in `sunshine.log`:
+
+1. **Wrong scale.** If KWin gave the output a fractional scale, Sunshine reports the
+   *logical* size (`source=1536x1067`) while the pointer device's absolute space is the
+   desktop. Absolute injection then lands proportionally — touches from the iPad activate
+   windows on the laptop panel instead of the streamed output.
+   Fix: `kscreen-doctor output.DP-4.scale.1` (logical size must equal the mode size).
+2. **Non-zero offset.** Sunshine's absolute mouse path hands out viewport-relative
+   coordinates (`viewport=1736,0`), so the streamed output has to sit at the desktop origin:
+   `kscreen-doctor output.DP-4.position.0,0`. With DP-4 at `0,0` and scale 1, touch maps
+   pixel-perfect.
+
+Also verify Sunshine can actually inject: the `libvirtualhid*` devices must be readable by
+the compositor's user (`event*` nodes are `root:input 0660` with no ACL by default — the
+compositor opens seat devices through logind and cannot do that for uinput devices):
+
+```bash
+# /etc/udev/rules.d/91-libvirtualhid-input.rules
+SUBSYSTEM=="input", ATTRS{name}=="libvirtualhid*", MODE="0660", GROUP="input", TAG+="uaccess"
+ACTION=="add|change", SUBSYSTEM=="input", ATTRS{name}=="libvirtualhid*", RUN+="/usr/bin/setfacl -m u:$USER:rw /dev/%k"
+```
+
+Note that with absolute touch the pointer can never leave the streamed output — for a
+pointer that roams across both screens use the client's relative-mouse/trackpad mode.
+
 ## Output vanished / went black after the EDID change
 
 KWin disabled the connector because the mode it had stored no longer exists:
